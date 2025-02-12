@@ -23,3 +23,6 @@ venv
 **/*.mp4
 **/validation_set
 CogVideo-1.0
+
+*.mp4
+
