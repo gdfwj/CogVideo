@@ -7,6 +7,8 @@ Running original model with gradio interface is at branch original, and the mode
 #### Setup environment
 
 ```shell
+git clone --recursive https://github.com/gdfwj/CogVideo.git # get diffusers module
+cd CogVideo
 pip install -r requirements.txt
 ```
 
@@ -16,15 +18,15 @@ I used python=3.11 for the implementation.
 
 To use the modified attention mechanism, you should use the modified diffusers by
 
-```
+```shell
 pip uninstall diffusers
 cd diffusers
-pip install .
+pip install -e .
 ```
 
 #### Start the demo
 
-To start web service, you could simply run this command line.
+To start web service, you could run this command line.
 
 ```shell
 python gradio_interface.py
@@ -33,6 +35,47 @@ python gradio_interface.py
 then it will run on http://localhost:7860/. 
 
 ### Causal Attention Mask Modifications
+
+I simply modified the code in 
+
+```python
+hidden_states = F.scaled_dot_product_attention(
+            query, key, value, attn_mask=attention_mask, dropout_p=0.0, is_causal=False)
+```
+
+to is_causal=True
+
+the code is at the 2860 line in diffusers/src/diffusers/models/attention_processor.py, in the \_\_call\_\_ of CogVideoAttnProcessor2_0.
+
+How did I find it and the reason why I modified the lib code is demonstrated in the last part of this file.
+
+### Inference and finetune model
+
+to inference, you could run test.py to use the provided example or try the gradio demo.
+
+to finetune model, you need to install listed packages
+
+```
+pip install peft
+pip install decord
+```
+
+I modified the finetune/train_ddp_i2v.sh to CogVideoX-5B-I2V with modified attention and proper datasets at /data/zihao/Disney-VideoGeneration-Dataset. You can try run it directly by
+
+```shell
+cd finetune
+bash train_ddp_i2v.sh
+```
+
+also I wrote a jupyter notebook of finetuning, at **finetune.ipynb**, it may run slower than the bash and sometime get OOM because it will only run on single GPU without accelerate. 
+
+#### Testing finetuned model
+
+The last part of finetune.ipynb is the code of loading the finetuned model, the main difficulty was to find the lora config and add into the checkpoint. 
+
+You can see the difference between output.mp4 and output-finetuned.mp4 (but difference is small because only trained for 10 epochs)
+
+(before testing, you need to restart the kernel to avoid OOM)
 
 
 
@@ -48,9 +91,7 @@ import inspect
 
 with open("modules.txt", "w") as f:
     for name, module in transformer.named_modules():
-        # 取得当前module对应的类
         cls = module.__class__
-        # 获取该类定义所在的文件路径
         file_path = inspect.getfile(cls)
         f.write(f"Module name: {name}, class: {cls.__name__}, file: {file_path}\n")
 ```
@@ -124,3 +165,27 @@ if attention_mask is not None:
 is called in processor, but the attention mask will only be repeat to [attn.heads, ...] in the function, and if we reshape it as the code said, the last second dimension will always be divided by batch_size
 
 (2)q k v is always at the length of hidden_states, but we input encoder_hidden_states into prepare_attention mask, which will cause dimensional mismatch in attention. 
+
+#### Finding LoRA config
+
+the checkpoints of finetuning the model through provided functions didn't contain adapter_config.json. To test the finetuned model, I have to find the lora config. 
+
+Here I found the code in 248 line of finetune/trainer.py
+
+```python
+self.components.transformer.add_adapter(transformer_lora_config)
+```
+
+Also find parameters in finetune.schemas
+
+```python
+rank: int = 128
+lora_alpha: int = 64
+target_modules: List[str] = ["to_q", "to_k", "to_v", "to_out.0"]
+```
+
+so I use generate_lora_config.py to create the config
+
+But peft always try to find the repository but not local files. 
+
+finally I found the demo in inference/cli_demo.py
