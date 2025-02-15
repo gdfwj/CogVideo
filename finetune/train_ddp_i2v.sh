@@ -5,30 +5,30 @@ export TOKENIZERS_PARALLELISM=false
 
 # Model Configuration
 MODEL_ARGS=(
-    --model_path "THUDM/CogVideoX1.5-5B-I2V"
-    --model_name "cogvideox1.5-i2v"  # ["cogvideox-i2v"]
+    --model_path "THUDM/CogVideoX-5B-I2V"
+    --model_name "cogvideox-i2v"  # ["cogvideox-i2v"]
     --model_type "i2v"
     --training_type "lora"
 )
 
 # Output Configuration
 OUTPUT_ARGS=(
-    --output_dir "/path/to/your/output_dir"
+    --output_dir "finetune_output"
     --report_to "tensorboard"
 )
 
 # Data Configuration
 DATA_ARGS=(
-    --data_root "/absolute/path/to/your/data_root"
+    --data_root "/data/zihao/Disney-VideoGeneration-Dataset"
     --caption_column "prompt.txt"
     --video_column "videos.txt"
-    # --image_column "images.txt"  # comment this line will use first frame of video as image conditioning
-    --train_resolution "81x768x1360"  # (frames x height x width), frames should be 8N+1
+    --image_column "images.txt"  # comment this line will use first frame of video as image conditioning
+    --train_resolution "49x480x720"  # (frames x height x width), frames should be 8N+1
 )
 
 # Training Configuration
 TRAIN_ARGS=(
-    --train_epochs 10 # number of training epochs
+    --train_epochs 1 # number of training epochs
     --seed 42 # random seed
     --batch_size 1
     --gradient_accumulation_steps 1
@@ -46,13 +46,13 @@ SYSTEM_ARGS=(
 CHECKPOINT_ARGS=(
     --checkpointing_steps 10 # save checkpoint every x steps
     --checkpointing_limit 2 # maximum number of checkpoints to keep, after which the oldest one is deleted
-    --resume_from_checkpoint "/absolute/path/to/checkpoint_dir"  # if you want to resume from a checkpoint, otherwise, comment this line
+    --resume_from_checkpoint "finetune_output/checkpoints/checkpoint-70"  # if you want to resume from a checkpoint, otherwise, comment this line
 )
 
 # Validation Configuration
 VALIDATION_ARGS=(
     --do_validation false  # ["true", "false"]
-    --validation_dir "/absolute/path/to/your/validation_set"
+    --validation_dir "/data/zihao/Disney-VideoGeneration-Dataset"
     --validation_steps 20  # should be multiple of checkpointing_steps
     --validation_prompts "prompts.txt"
     --validation_images "images.txt"

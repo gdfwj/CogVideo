@@ -1,6 +1,6 @@
 Module name: , class: CogVideoXTransformer3DModel, file: /home/zihao/miniconda3/envs/cogvideo/lib/python3.11/site-packages/diffusers/models/transformers/cogvideox_transformer_3d.py
 Module name: patch_embed, class: CogVideoXPatchEmbed, file: /home/zihao/miniconda3/envs/cogvideo/lib/python3.11/site-packages/diffusers/models/embeddings.py
-Module name: patch_embed.proj, class: Conv2d, file: /home/zihao/miniconda3/envs/cogvideo/lib/python3.11/site-packages/torch/nn/modules/conv.py
+Module name: patch_embed.proj, class: Linear, file: /home/zihao/miniconda3/envs/cogvideo/lib/python3.11/site-packages/torch/nn/modules/linear.py
 Module name: patch_embed.text_proj, class: Linear, file: /home/zihao/miniconda3/envs/cogvideo/lib/python3.11/site-packages/torch/nn/modules/linear.py
 Module name: embedding_dropout, class: Dropout, file: /home/zihao/miniconda3/envs/cogvideo/lib/python3.11/site-packages/torch/nn/modules/dropout.py
 Module name: time_proj, class: Timesteps, file: /home/zihao/miniconda3/envs/cogvideo/lib/python3.11/site-packages/diffusers/models/embeddings.py
@@ -8,6 +8,10 @@ Module name: time_embedding, class: TimestepEmbedding, file: /home/zihao/minicon
 Module name: time_embedding.linear_1, class: Linear, file: /home/zihao/miniconda3/envs/cogvideo/lib/python3.11/site-packages/torch/nn/modules/linear.py
 Module name: time_embedding.act, class: SiLU, file: /home/zihao/miniconda3/envs/cogvideo/lib/python3.11/site-packages/torch/nn/modules/activation.py
 Module name: time_embedding.linear_2, class: Linear, file: /home/zihao/miniconda3/envs/cogvideo/lib/python3.11/site-packages/torch/nn/modules/linear.py
+Module name: ofs_proj, class: Timesteps, file: /home/zihao/miniconda3/envs/cogvideo/lib/python3.11/site-packages/diffusers/models/embeddings.py
+Module name: ofs_embedding, class: TimestepEmbedding, file: /home/zihao/miniconda3/envs/cogvideo/lib/python3.11/site-packages/diffusers/models/embeddings.py
+Module name: ofs_embedding.linear_1, class: Linear, file: /home/zihao/miniconda3/envs/cogvideo/lib/python3.11/site-packages/torch/nn/modules/linear.py
+Module name: ofs_embedding.linear_2, class: Linear, file: /home/zihao/miniconda3/envs/cogvideo/lib/python3.11/site-packages/torch/nn/modules/linear.py
 Module name: transformer_blocks, class: ModuleList, file: /home/zihao/miniconda3/envs/cogvideo/lib/python3.11/site-packages/torch/nn/modules/container.py
 Module name: transformer_blocks.0, class: CogVideoXBlock, file: /home/zihao/miniconda3/envs/cogvideo/lib/python3.11/site-packages/diffusers/models/transformers/cogvideox_transformer_3d.py
 Module name: transformer_blocks.0.norm1, class: CogVideoXLayerNormZero, file: /home/zihao/miniconda3/envs/cogvideo/lib/python3.11/site-packages/diffusers/models/normalization.py

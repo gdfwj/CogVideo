@@ -247,6 +247,8 @@ class Trainer:
             )
             self.components.transformer.add_adapter(transformer_lora_config)
             self.__prepare_saving_loading_hooks(transformer_lora_config)
+            
+            print(self.components.transformer.peft_config)
 
         # Load components needed for training to GPU (except transformer), and cast them to the specified data type
         ignore_list = ["transformer"] + self.UNLOAD_LIST
