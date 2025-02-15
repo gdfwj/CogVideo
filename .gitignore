@@ -26,6 +26,6 @@ CogVideo-1.0
 
 *.mp4
 
-./diffusers
+diffusers
 
-./sat/CogVideoX1.5-5B-SAT/
+sat/CogVideoX1.5-5B-SAT/
