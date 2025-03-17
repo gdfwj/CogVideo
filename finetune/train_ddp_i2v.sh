@@ -14,12 +14,12 @@ MODEL_ARGS=(
 # Output Configuration
 OUTPUT_ARGS=(
     --output_dir "finetune_output"
-    --report_to "tensorboard"
+    --report_to "wandb"
 )
 
 # Data Configuration
 DATA_ARGS=(
-    --data_root "/data/zihao/Disney-VideoGeneration-Dataset"
+    --data_root "/data/zihao/one_data"
     --caption_column "prompt.txt"
     --video_column "videos.txt"
     --image_column "images.txt"  # comment this line will use first frame of video as image conditioning
@@ -28,9 +28,9 @@ DATA_ARGS=(
 
 # Training Configuration
 TRAIN_ARGS=(
-    --train_epochs 1 # number of training epochs
+    --train_epochs 1000 # number of training epochs
     --seed 42 # random seed
-    --batch_size 1
+    --batch_size 2
     --gradient_accumulation_steps 1
     --mixed_precision "bf16"  # ["no", "fp16"] # Only CogVideoX-2B supports fp16 training
 )
@@ -46,7 +46,7 @@ SYSTEM_ARGS=(
 CHECKPOINT_ARGS=(
     --checkpointing_steps 10 # save checkpoint every x steps
     --checkpointing_limit 2 # maximum number of checkpoints to keep, after which the oldest one is deleted
-    --resume_from_checkpoint "finetune_output/checkpoints/checkpoint-70"  # if you want to resume from a checkpoint, otherwise, comment this line
+    # --resume_from_checkpoint "finetune_output/checkpoints/checkpoint-70"  # if you want to resume from a checkpoint, otherwise, comment this line
 )
 
 # Validation Configuration
@@ -58,9 +58,10 @@ VALIDATION_ARGS=(
     --validation_images "images.txt"
     --gen_fps 16
 )
-
+export MAIN_PROCESS_PORT=11451
+export MASTER_PORT=11451
 # Combine all arguments and launch training
-accelerate launch train.py \
+accelerate launch --main_process_port=11451 train.py \
     "${MODEL_ARGS[@]}" \
     "${OUTPUT_ARGS[@]}" \
     "${DATA_ARGS[@]}" \
