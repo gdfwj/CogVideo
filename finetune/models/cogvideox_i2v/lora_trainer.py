@@ -18,7 +18,7 @@ from concurrent import futures
 from finetune.schemas import Components
 from finetune.trainer import Trainer
 from finetune.utils import unwrap_model
-from finetune.ddpo_pytorch.ddpo_pytorch.rewards import jpeg_compressibility, compute_temporal_consistency, compute_lpips_reward, simple_MSE_reward
+from finetune.ddpo_pytorch.ddpo_pytorch.rewards import jpeg_compressibility, compute_temporal_consistency, compute_lpips_reward, simple_MSE_reward, combined_reward_all
 from finetune.ddpo_pytorch.ddpo_pytorch.diffusers_patch.ddim_with_logprob import ddim_step_with_logprob
 
 from ..utils import register
@@ -27,46 +27,51 @@ import wandb
 import torch.nn.functional as F
 from torch.optim import Adam
 
-class LatentRewardFunction3D(nn.Module):
-    """
-    用一个简单的 3D Conv + 全连接层做示例。
-    你也可以换成 3D Transformer、ViT-3D 等更复杂结构。
-    """
-    def __init__(self, in_channels=16, hidden_dim=64):
-        super().__init__()
-        # 简单 3D Conv 例子
-        self.conv3d_1 = nn.Conv3d(in_channels, 32, kernel_size=3, padding=1)
-        self.conv3d_2 = nn.Conv3d(32, 64, kernel_size=3, padding=1)
-        self.pool = nn.MaxPool3d((2, 2, 2))  # 在 T,H,W 三维都做 pool
-        
-        # 全连接层，输出1个标量作为奖励
-        # 假设后面 flatten 后大小是 some_dim，这里根据你的输入大小实际计算
-        self.fc1 = nn.Linear(64 *  (8164), hidden_dim)  # some_dim 需要根据视频帧数/空间分辨率计算
-        self.fc2 = nn.Linear(hidden_dim, 1)
+class TextVideoReward(nn.Module):
+    def __init__(self, embed_dim=512):
+        super(TextVideoReward, self).__init__()
 
-    def forward(self, video_latent: torch.Tensor, text_emb: torch.Tensor) -> torch.Tensor:
-        """
-        video_latent: [B, C, F, H, W] (比如 [batch_size, 4, frames, 64, 64])
-        text_emb: [B, seq_len, emb_dim] (比如 [batch_size, 77, 768])，或根据你的 text encoder 输出而定
-        
-        返回值： [B, 1] 的标量奖励
-        """
-        # (B, C, F, H, W) => (B, 32, F, H, W)
-        # print(video_latent.shape)
-        x = F.relu(self.conv3d_1(video_latent))
-        x = F.relu(self.conv3d_2(x))
-        x = self.pool(x)  # (B, 64, F/2, H/2, W/2) => flatten => (B, -1)
+        # Video Feature Extractor (2D CNN with 13 channels as input)
+        self.video_backbone = nn.Sequential(
+            nn.Conv2d(13, 64, kernel_size=7, stride=2, padding=3),
+            nn.ReLU(),
+            nn.AdaptiveAvgPool2d((7, 7)),
+            nn.Flatten(),
+            nn.Linear(64 * 7 * 7, embed_dim)
+        )
 
-        x = x.flatten(start_dim=1)  # [B, 64*(F/2)*(H/2)*(W/2)]
-        
-        # 简单做法：把文本特征与 video flatten 拼接
-        # 也可以做 cross-attention 或者 separate encoding
-        text_feat = text_emb.mean(dim=1)  # [B, emb_dim], 这里简单做个平均
-        x = torch.cat([x, text_feat], dim=1)  # [B, 64*(...)+emb_dim]
-        # print(x.shape)
+        # Project text latent to same embedding dimension
+        self.text_proj = nn.Linear(4096, embed_dim)
 
-        x = F.relu(self.fc1(x))
-        reward = self.fc2(x)  # [B, 1]
+        # Cross Attention Layer
+        self.attention = nn.MultiheadAttention(embed_dim, num_heads=8)
+
+        # Final MLP to produce reward score
+        self.fc = nn.Sequential(
+            nn.Linear(embed_dim, 128),
+            nn.ReLU(),
+            nn.Linear(128, 1)
+        )
+
+    def forward(self, video, text_latent):
+        # Video Embedding
+        B, T, C, H, W = video.size()  # (Batch, Frames, Channels, Height, Width)
+        video = video.view(B * T, C, H, W)
+        video_features = self.video_backbone(video)
+        video_features = video_features.view(B, T, -1)  # (Batch, Frames, Embed_dim)
+        video_latent = video_features.mean(dim=1)  # Average frame features
+
+        # Project text latent
+        text_latent = self.text_proj(text_latent)  # (Batch, Tokens, Embed_dim)
+
+        # Cross Attention
+        video_latent = video_latent.unsqueeze(0)  # (1, Batch, Embed_dim)
+        text_latent = text_latent.transpose(0, 1)  # (Tokens, Batch, Embed_dim)
+        attended_features, _ = self.attention(text_latent, video_latent, video_latent)
+
+        # Pooling attention output and compute reward
+        pooled_features = attended_features.mean(dim=0)  # (Batch, Embed_dim)
+        reward = self.fc(pooled_features)
         return reward
 
 
@@ -198,12 +203,9 @@ class CogVideoXI2VLoraTrainer(Trainer):
         
         if not hasattr(self, "reward_model"):
             # self.reward_model = jpeg_compressibility()
-            self.reward_model = simple_MSE_reward
+            self.reward_model = combined_reward_all
             
-            self.reward_model_3d = LatentRewardFunction3D(
-                in_channels=16,    # 跟你的 VAE latent channel 对齐
-                hidden_dim=64     # 可以根据需要调整
-            ).to(self.accelerator.device, dtype=torch.bfloat16)
+            self.reward_model_3d = TextVideoReward().to(self.accelerator.device, dtype=torch.bfloat16)
 
         # from [B, C, F, H, W] to [B, F, C, H, W]
         latent = latent.permute(0, 2, 1, 3, 4)
@@ -216,8 +218,8 @@ class CogVideoXI2VLoraTrainer(Trainer):
         image_latents = torch.cat([image_latents, latent_padding], dim=1)
 
         # Add noise to latent
-        # noise = torch.randn_like(latent)
-        noise = torch.ones_like(latent) * 0.35
+        noise = torch.randn_like(latent)
+        # noise = torch.ones_like(latent) * 0.35
         latent_noisy = self.components.scheduler.add_noise(latent, noise, timesteps)
 
         # 检查 latent_noisy 是否包含 NaN 值
@@ -294,6 +296,8 @@ class CogVideoXI2VLoraTrainer(Trainer):
 
         compress_reward = torch.tensor(reward).to(self.accelerator.device, dtype=torch.bfloat16)
         compress_reward_reshaped = compress_reward.unsqueeze(1).detach()
+        # print(latent_pred.shape, prompt_embedding.shape)
+        # exit(0)
         predicted_reward_3d = self.reward_model_3d(latent_pred, prompt_embedding)
         
         # print("predicted_reward_3d.dtype:", predicted_reward_3d.dtype)
