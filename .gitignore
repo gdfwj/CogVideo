@@ -35,3 +35,8 @@ finetune/ddpo_pytorch/
 *.jpg
 
 *.ipynb
+
+finetune/VideoScore/
+VBench/
+tokenizers/
+finetune/ckpt_reward/

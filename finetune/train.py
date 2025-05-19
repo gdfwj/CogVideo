@@ -11,7 +11,7 @@ import torch
 
 def main():
     args = Args.parse_args()
-    torch.autograd.set_detect_anomaly(True)
+    # torch.autograd.set_detect_anomaly(True)
     wandb.init(
         project="pandora_distill",  # 你的项目名称
         name="DDPO_finetune",  # 运行的名称

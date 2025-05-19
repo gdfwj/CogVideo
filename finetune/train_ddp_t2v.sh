@@ -5,29 +5,29 @@ export TOKENIZERS_PARALLELISM=false
 
 # Model Configuration
 MODEL_ARGS=(
-    --model_path "THUDM/CogVideoX1.5-5B"
-    --model_name "cogvideox1.5-t2v"  # ["cogvideox-t2v"]
+    --model_path "THUDM/cogvideox-2b"
+    --model_name "cogvideox-t2v"  # ["cogvideox-t2v"]
     --model_type "t2v"
     --training_type "lora"
 )
 
 # Output Configuration
 OUTPUT_ARGS=(
-    --output_dir "/absolute/path/to/your/output_dir"
+    --output_dir "finetune_output"
     --report_to "tensorboard"
 )
 
 # Data Configuration
 DATA_ARGS=(
-    --data_root "/absolute/path/to/your/data_root"
+    --data_root "/data/zihao/one_data"
     --caption_column "prompt.txt"
     --video_column "videos.txt"
-    --train_resolution "81x768x1360"  # (frames x height x width), frames should be 8N+1
+    --train_resolution "49x480x720"  # (frames x height x width), frames should be 8N+1
 )
 
 # Training Configuration
 TRAIN_ARGS=(
-    --train_epochs 10 # number of training epochs
+    --train_epochs 1000 # number of training epochs
     --seed 42 # random seed
     --batch_size 1
     --gradient_accumulation_steps 1
@@ -56,9 +56,10 @@ VALIDATION_ARGS=(
     --validation_prompts "prompts.txt"
     --gen_fps 16
 )
-
+export MAIN_PROCESS_PORT=12354
+export MASTER_PORT=12354
 # Combine all arguments and launch training
-accelerate launch train.py \
+accelerate launch --main_process_port=12354 train.py \
     "${MODEL_ARGS[@]}" \
     "${OUTPUT_ARGS[@]}" \
     "${DATA_ARGS[@]}" \

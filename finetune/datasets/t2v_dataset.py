@@ -141,6 +141,7 @@ class BaseT2VDataset(Dataset):
         return {
             "prompt_embedding": prompt_embedding,
             "encoded_video": encoded_video,
+            "prompt": prompt,
             "video_metadata": {
                 "num_frames": encoded_video.shape[1],
                 "height": encoded_video.shape[2],

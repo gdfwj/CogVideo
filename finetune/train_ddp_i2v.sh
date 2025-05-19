@@ -46,7 +46,7 @@ SYSTEM_ARGS=(
 CHECKPOINT_ARGS=(
     --checkpointing_steps 10 # save checkpoint every x steps
     --checkpointing_limit 2 # maximum number of checkpoints to keep, after which the oldest one is deleted
-    # --resume_from_checkpoint "finetune_output/checkpoints/checkpoint-70"  # if you want to resume from a checkpoint, otherwise, comment this line
+    # --resume_from_checkpoint "/home/zihao/CogVideo/finetune/finetune_output/checkpoint-370"  # if you want to resume from a checkpoint, otherwise, comment this line
 )
 
 # Validation Configuration

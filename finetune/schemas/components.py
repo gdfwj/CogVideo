@@ -26,3 +26,9 @@ class Components(BaseModel):
 
     # Scheduler
     scheduler: Any = None
+    
+    reward_model: Any = None
+    
+    reward_model_3d: Any = None
+
+    reward_model_3d_optimizer: Any = None

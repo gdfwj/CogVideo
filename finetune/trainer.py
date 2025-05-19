@@ -19,6 +19,9 @@ from accelerate.utils import (
     gather_object,
     set_seed,
 )
+from accelerate import FullyShardedDataParallelPlugin
+from torch.distributed.fsdp.fully_sharded_data_parallel import FullOptimStateDictConfig, FullStateDictConfig
+
 from diffusers.optimization import get_scheduler
 from diffusers.pipelines import DiffusionPipeline
 from diffusers.utils.export_utils import export_to_video
@@ -90,11 +93,18 @@ class Trainer:
         logging_dir = Path(self.args.output_dir, "logs")
         project_config = ProjectConfiguration(project_dir=self.args.output_dir, logging_dir=logging_dir)
         ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
+        
         init_process_group_kwargs = InitProcessGroupKwargs(
             backend="nccl", timeout=timedelta(seconds=self.args.nccl_timeout)
         )
         mixed_precision = "no" if torch.backends.mps.is_available() else self.args.mixed_precision
         report_to = None if self.args.report_to.lower() == "none" else self.args.report_to
+        
+        # fsdp_plugin = FullyShardedDataParallelPlugin(
+        #     state_dict_config=FullStateDictConfig(offload_to_cpu=False, rank0_only=False),
+        #     optim_state_dict_config=FullOptimStateDictConfig(offload_to_cpu=False, rank0_only=False),
+        # )
+        # print(FullStateDictConfig(offload_to_cpu=False, rank0_only=False))
 
         accelerator = Accelerator(
             project_config=project_config,
@@ -102,6 +112,7 @@ class Trainer:
             mixed_precision=mixed_precision,
             log_with=report_to,
             kwargs_handlers=[ddp_kwargs, init_process_group_kwargs],
+            # fsdp_plugin=fsdp_plugin
         )
 
         # Disable AMP for MPS.
@@ -455,9 +466,8 @@ class Trainer:
                 logs["lr"] = self.lr_scheduler.get_last_lr()[0]
                 logs["reward_loss"] = reward_loss.detach().item()
                 logs["reward0"] = reward[0].item()
-                logs["reward1"] = reward[1].item()
                 logs["reward_new0"] = reward_new[0].item()
-                logs["reward_new1"] = reward_new[1].item()
+                wandb.log(logs, step=global_step)
                 progress_bar.set_postfix(logs)
 
                 # Maybe run validation
@@ -656,6 +666,25 @@ class Trainer:
 
     def collate_fn(self, examples: List[Dict[str, Any]]):
         raise NotImplementedError
+        # ret = {
+        #     "encoded_videos": [],
+        #     "prompt_embedding": [],
+        #     "prompt": [],      # <--- 新增一个
+        #     "images": [],
+        # }
+        # for sample in examples:
+        #     ret["encoded_videos"].append(sample["encoded_video"])
+        #     ret["prompt_embedding"].append(sample["prompt_embedding"])
+        #     ret["images"].append(sample["image"])
+        #     # 把原始 prompt 文本也收进来
+        #     ret["prompt"].append(sample["prompt"])
+
+        # ret["encoded_videos"] = torch.stack(ret["encoded_videos"])
+        # ret["prompt_embedding"] = torch.stack(ret["prompt_embedding"])
+        # ret["images"] = torch.stack(ret["images"])
+        # # prompt 是字符串，直接放列表，不需要 torch.stack
+        # return ret
+
 
     def load_components(self) -> Components:
         raise NotImplementedError
