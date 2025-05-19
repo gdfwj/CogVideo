@@ -30,7 +30,7 @@ sat/CogVideoX1.5-5B-SAT/
 
 *finetune_output*
 
-finetune/ddpo_pytorch/
+# finetune/ddpo_pytorch/
 
 *.jpg
 
